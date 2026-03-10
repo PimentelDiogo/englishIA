@@ -1,6 +1,7 @@
+import 'package:get/get.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
-import '../../core/constants/constants.dart';
 import '../../domain/entities/topic_entity.dart';
+import '../../presentation/services/config_service.dart';
 
 class GeminiContextDatasource {
   GenerativeModel? _model;
@@ -10,9 +11,10 @@ class GeminiContextDatasource {
   void _initSession(TopicEntity topic) {
     if (_currentTopicId == topic.id && _chat != null) return;
 
+    final apiKey = Get.find<ConfigService>().apiKey;
     _model = GenerativeModel(
       model: 'gemini-2.5-flash',
-      apiKey: Constants.geminiApiKey,
+      apiKey: apiKey,
       systemInstruction: Content.system(topic.systemPrompt),
     );
     _chat = _model!.startChat();
@@ -32,7 +34,7 @@ class GeminiFlashcardDatasource {
   GeminiFlashcardDatasource()
     : _model = GenerativeModel(
         model: 'gemini-2.5-flash',
-        apiKey: Constants.geminiApiKey,
+        apiKey: Get.find<ConfigService>().apiKey,
       );
 
   Future<String> getFlashcardsJson(int count) async {
@@ -60,7 +62,7 @@ class GeminiPhrasalVerbDatasource {
   GeminiPhrasalVerbDatasource()
     : _model = GenerativeModel(
         model: 'gemini-2.5-flash',
-        apiKey: Constants.geminiApiKey,
+        apiKey: Get.find<ConfigService>().apiKey,
       );
 
   Future<String> getPhrasalVerbsJson(int count) async {

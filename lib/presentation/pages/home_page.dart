@@ -114,6 +114,15 @@ class HomePage extends StatelessWidget {
             ),
           ],
         ),
+        const Spacer(),
+        IconButton(
+          onPressed: () => Get.toNamed('/settings'),
+          icon: Icon(
+            Icons.settings_outlined,
+            color: Colors.white.withAlpha(150),
+            size: 26,
+          ),
+        ),
       ],
     );
   }

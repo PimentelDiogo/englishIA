@@ -7,11 +7,18 @@ import 'package:english_ia/presentation/pages/context_chat_page.dart';
 import 'package:english_ia/presentation/pages/flashcard_page.dart';
 import 'package:english_ia/presentation/pages/home_page.dart';
 import 'package:english_ia/presentation/pages/phrasal_verb_page.dart';
+import 'package:english_ia/presentation/pages/settings_page.dart';
 import 'package:english_ia/presentation/pages/topic_selection_page.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-void main() {
+import 'package:get_storage/get_storage.dart';
+import 'package:english_ia/presentation/services/config_service.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await GetStorage.init();
+  await Get.putAsync(() => ConfigService().init());
   runApp(const MyApp());
 }
 
@@ -55,6 +62,7 @@ class MyApp extends StatelessWidget {
           page: () => const PhrasalVerbPage(),
           binding: PhrasalVerbBinding(),
         ),
+        GetPage(name: '/settings', page: () => const SettingsPage()),
       ],
     );
   }
