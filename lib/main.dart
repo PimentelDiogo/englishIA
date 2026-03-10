@@ -1,0 +1,61 @@
+import 'package:english_ia/presentation/bindings/chat_binding.dart';
+import 'package:english_ia/presentation/bindings/flashcard_binding.dart';
+import 'package:english_ia/presentation/bindings/phrasal_verb_binding.dart';
+import 'package:english_ia/presentation/bindings/topic_chat_binding.dart';
+import 'package:english_ia/presentation/pages/chat_page.dart';
+import 'package:english_ia/presentation/pages/context_chat_page.dart';
+import 'package:english_ia/presentation/pages/flashcard_page.dart';
+import 'package:english_ia/presentation/pages/home_page.dart';
+import 'package:english_ia/presentation/pages/phrasal_verb_page.dart';
+import 'package:english_ia/presentation/pages/topic_selection_page.dart';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+
+void main() {
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return GetMaterialApp(
+      title: 'English IA',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6C63FF)),
+        useMaterial3: true,
+      ),
+      initialRoute: '/home',
+      getPages: [
+        GetPage(name: '/home', page: () => const HomePage()),
+        GetPage(
+          name: '/chat',
+          page: () => const ChatPage(),
+          binding: ChatBinding(),
+        ),
+        GetPage(
+          name: '/topics',
+          page: () => const TopicSelectionPage(),
+          binding: TopicChatBinding(),
+        ),
+        GetPage(
+          name: '/context-chat',
+          page: () => const ContextChatPage(),
+          binding: TopicChatBinding(),
+        ),
+        GetPage(
+          name: '/flashcards',
+          page: () => const FlashcardPage(),
+          binding: FlashcardBinding(),
+        ),
+        GetPage(
+          name: '/phrasal-verbs',
+          page: () => const PhrasalVerbPage(),
+          binding: PhrasalVerbBinding(),
+        ),
+      ],
+    );
+  }
+}
