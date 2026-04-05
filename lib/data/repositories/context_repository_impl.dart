@@ -28,10 +28,21 @@ class ContextChatRepositoryImpl implements ContextChatRepository {
     String message,
   ) async {
     try {
-      final text = await dataSource.sendMessage(topic, message);
-      return MessageEntity(text: text, isUser: false);
+      final jsonStr = await dataSource.sendMessage(topic, message);
+      final Map<String, dynamic> data = json.decode(jsonStr);
+      
+      final dialogueResponse = data['dialogueResponse'] as String? ?? 'No response';
+      final grammarFeedback = data['grammarFeedback'] as String?;
+      
+      return MessageEntity(
+        text: dialogueResponse, 
+        isUser: false,
+        grammarFeedback: (grammarFeedback != null && grammarFeedback.isNotEmpty) 
+            ? grammarFeedback 
+            : null,
+      );
     } catch (e) {
-      return MessageEntity(text: 'Error: ${e.toString()}', isUser: false);
+      return MessageEntity(text: 'Error parsing response: ${e.toString()}', isUser: false);
     }
   }
 }

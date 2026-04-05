@@ -4,6 +4,7 @@ class FlashcardEntity {
   final String phonetics;
   final String exampleSentence;
   final String exampleTranslation;
+  final DateTime? nextReviewDate;
 
   const FlashcardEntity({
     required this.word,
@@ -11,6 +12,7 @@ class FlashcardEntity {
     required this.phonetics,
     required this.exampleSentence,
     required this.exampleTranslation,
+    this.nextReviewDate,
   });
 
   factory FlashcardEntity.fromJson(Map<String, dynamic> json) {

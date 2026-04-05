@@ -12,10 +12,23 @@ class GeminiContextDatasource {
     if (_currentTopicId == topic.id && _chat != null) return;
 
     final apiKey = Get.find<ConfigService>().apiKey;
+    final jsonInstruction = '''
+$topic.systemPrompt
+
+IMPORTANT: You MUST return ONLY a valid JSON object in the exact format:
+{
+  "dialogueResponse": "Your response in character",
+  "grammarFeedback": "Optional feedback correcting the user's mistakes. Leave empty if no mistakes."
+}
+''';
+
     _model = GenerativeModel(
       model: 'gemini-2.5-flash',
       apiKey: apiKey,
-      systemInstruction: Content.system(topic.systemPrompt),
+      systemInstruction: Content.system(jsonInstruction),
+      generationConfig: GenerationConfig(
+        responseMimeType: 'application/json',
+      ),
     );
     _chat = _model!.startChat();
     _currentTopicId = topic.id;

@@ -14,11 +14,13 @@ import 'package:get/get.dart';
 
 import 'package:get_storage/get_storage.dart';
 import 'package:english_ia/presentation/services/config_service.dart';
+import 'package:english_ia/presentation/services/voice_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await GetStorage.init();
   await Get.putAsync(() => ConfigService().init());
+  await Get.putAsync(() => VoiceService().init());
   runApp(const MyApp());
 }
 

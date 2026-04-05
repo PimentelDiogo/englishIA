@@ -1,1 +1,1 @@
- /Users/diogopimentel/StudioProjects/englishIA/englishIA/build/ec5b2163d798aaf5dca42cfd7de72840/dart_build_result.json: 
+ /Users/diogopimentel/StudioProjects/englishIA/englishIA/build/ec5b2163d798aaf5dca42cfd7de72840/dart_build_result.json:  /Users/diogopimentel/StudioProjects/englishIA/englishIA/.dart_tool/package_config.json /Users/diogopimentel/StudioProjects/englishIA/englishIA/pubspec.yaml /Users/diogopimentel/fvm/versions/stable/bin/cache/dart-sdk/version
