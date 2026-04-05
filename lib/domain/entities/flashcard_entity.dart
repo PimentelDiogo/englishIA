@@ -1,4 +1,5 @@
 class FlashcardEntity {
+  final int? id;
   final String word;
   final String translation;
   final String phonetics;
@@ -7,6 +8,7 @@ class FlashcardEntity {
   final DateTime? nextReviewDate;
 
   const FlashcardEntity({
+    this.id,
     required this.word,
     required this.translation,
     required this.phonetics,

@@ -35,6 +35,7 @@ class FlashcardModel {
 
   FlashcardEntity toEntity() {
     return FlashcardEntity(
+      id: id,
       word: word,
       translation: translation,
       phonetics: phonetics,
