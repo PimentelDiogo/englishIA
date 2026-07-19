@@ -5,9 +5,24 @@ import '../../core/constants/constants.dart';
 class ConfigService extends GetxService {
   final _storage = GetStorage();
   static const _keyName = 'gemini_api_key';
+  static const _gatewayUrlName = 'gateway_url';
 
   Future<ConfigService> init() async {
     return this;
+  }
+
+  /// URL base do AI Gateway (ADR-001). Prioriza valor salvo em Settings,
+  /// senao cai para a constante (que aceita --dart-define=GATEWAY_URL).
+  String get gatewayUrl {
+    final stored = _storage.read<String>(_gatewayUrlName);
+    if (stored != null && stored.isNotEmpty) {
+      return stored;
+    }
+    return Constants.gatewayUrl;
+  }
+
+  Future<void> saveGatewayUrl(String url) async {
+    await _storage.write(_gatewayUrlName, url);
   }
 
   String get apiKey {
