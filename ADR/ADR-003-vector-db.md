@@ -75,8 +75,16 @@ graph LR
 - Embeddings: `text-embedding-004` (Gemini, 768 dims) — sem SaaS/conta nova.
 - Base semeada no boot (`KnowledgeSeeder`, idempotente): regras de gramática + phrasal verbs.
 - Grounding: contexto recuperado injetado no prompt + `GroundingChecker` (anti-alucinação).
+- **Busca híbrida (feito):** dense (`<=>`) + lexical (full-text `ts_rank_cd`/`websearch_to_tsquery`,
+  coluna `content_tsv` gerada + índice GIN) fundidas por **RRF** (Reciprocal Rank Fusion) no
+  `RagService`. Toggle `RAG_HYBRID`; fail-soft para só-dense se o full-text faltar. É "BM25-like"
+  (true BM25 exigiria ParadeDB/`pg_search`); RRF é o rerank pragmático (sem cross-encoder).
+- **RAGAS (feito):** harness offline em `gateway/eval/` (dataset + `ragas_eval.py`) medindo
+  faithfulness/answer-relevancy/context-precision/recall. Usa o endpoint `POST /tutor/retrieve`
+  (expõe os chunks do híbrido) + Gemini como juiz.
 - **Fail-soft:** DB fora → RAG retorna vazio, tutor segue sem grounding (não derruba).
-- **Pendente:** busca híbrida (BM25) + rerank; RAGAS offline; histórico do aluno via MCP.
+- **Pendente:** histórico do aluno via **MCP** (personalização); confirmar o contrato da API de
+  embeddings (`embedContent`) contra a API viva; opcional: true BM25 (ParadeDB) + cross-encoder rerank.
 
 ## Narrativa de entrevista
 "Escolhi pgvector em vez de Qdrant conscientemente: no meu estágio, uma infra só (Postgres

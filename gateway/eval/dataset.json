@@ -1,0 +1,22 @@
+[
+  {
+    "question": "When do I use the present perfect?",
+    "ground_truth": "Use the present perfect (have/has + past participle) to link a past action to the present, for experiences and unfinished time."
+  },
+  {
+    "question": "What is the difference between 'since' and 'for'?",
+    "ground_truth": "Use 'since' with a point in time (since 2020) and 'for' with a duration (for three years)."
+  },
+  {
+    "question": "make vs do — which one do I use?",
+    "ground_truth": "Use 'make' for creating/producing (make a decision) and 'do' for tasks/activities (do homework)."
+  },
+  {
+    "question": "What does the phrasal verb 'give up' mean?",
+    "ground_truth": "'give up' means to quit or stop trying."
+  },
+  {
+    "question": "What does 'run out of' mean?",
+    "ground_truth": "'run out of' means to have no more of something (We ran out of time)."
+  }
+]

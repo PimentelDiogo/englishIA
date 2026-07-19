@@ -70,7 +70,11 @@ Monólito, tudo em `lib/`:
   dense `<=>`) · `RagService` (retrieve + bloco de contexto) · `KnowledgeSeeder` (gramática +
   phrasal, idempotente, boot). `TutorService` injeta o contexto no prompt e checa grounding
   (`GroundingChecker`, anti-alucinação). **Fail-soft:** DB fora → tutor segue sem grounding.
-  Rodar: `docker compose up -d` + `GEMINI_API_KEY=...`.
+  **Busca híbrida:** dense (`<=>`) + lexical (full-text `content_tsv`) fundidas por RRF em
+  `RagService` (`RAG_HYBRID`, fail-soft p/ só-dense). Endpoint `POST /tutor/retrieve` expõe os chunks.
+  **Eval RAGAS** offline em `gateway/eval/` (dataset + `ragas_eval.py`). Rodar: `docker compose up -d`
+  + `GEMINI_API_KEY=...`. **Stack Docker completo:** db (pgvector) + gateway + Prometheus + Grafana
+  (`docker compose up -d --build`; Grafana :3000 dashboard "englishIA — LLM" p/ auditoria de token).
 - **Router + cache (Fase 4 / ADR-004):** `ModelRouter` (rule-based) roteia por complexidade —
   tem contexto de gramática → modelo forte; casual → barato (`router.cheap-model`=flash-lite).
   `SemanticCache` (pgvector) responde perguntas quase idênticas do cache (`cached:true`, 0 token do

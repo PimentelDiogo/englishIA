@@ -17,6 +17,7 @@ public record RagProperties(
         int embeddingDimensions,
         int topK,
         double maxDistance,
-        boolean seedOnStartup
+        boolean seedOnStartup,
+        boolean hybridEnabled
 ) {
 }

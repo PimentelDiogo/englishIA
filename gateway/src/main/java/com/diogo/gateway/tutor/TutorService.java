@@ -54,6 +54,14 @@ public class TutorService {
         this.metrics = metrics;
     }
 
+    /**
+     * Recupera os chunks de contexto para uma pergunta (busca híbrida). Endpoint de
+     * eval/debug — usado pelo harness RAGAS para medir grounding.
+     */
+    public List<KnowledgeChunk> retrieveContext(String message) {
+        return rag.retrieve(rag.embedQuery(message), message);
+    }
+
     public ChatResponse chat(ChatRequest request) {
         // 1) Input guardrails — barram ANTES de gastar o modelo forte.
         GuardrailResult in = guardrails.checkInput(request.message());
@@ -77,8 +85,8 @@ public class TutorService {
             metrics.recordCache(false);
         }
 
-        // 3) RAG — recupera conhecimento relevante e injeta no prompt (grounding).
-        List<KnowledgeChunk> chunks = rag.retrieve(embedding);
+        // 3) RAG — busca híbrida (dense + lexical) e injeta no prompt (grounding).
+        List<KnowledgeChunk> chunks = rag.retrieve(embedding, request.message());
         String context = rag.toContextBlock(chunks);
         String system = context == null ? SYSTEM_TUTOR : SYSTEM_TUTOR + "\n\n" + context;
 

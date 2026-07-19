@@ -1,0 +1,5 @@
+# Eval harness RAGAS (offline). Versões testadas na linha 0.2.x.
+ragas>=0.2,<0.3
+datasets>=2.19
+langchain-google-genai>=2.0
+requests>=2.31
