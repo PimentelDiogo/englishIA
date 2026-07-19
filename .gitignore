@@ -6,3 +6,19 @@
 env.json
 .env
 *.env
+
+# Flutter / Dart / Build Local
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+
+# IDEs / Editor cache
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+*.log

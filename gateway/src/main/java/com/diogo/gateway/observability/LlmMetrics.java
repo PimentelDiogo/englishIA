@@ -56,6 +56,25 @@ public class LlmMetrics {
         return cost;
     }
 
+    /** Registra um bloqueio de guardrail (entrada ou saida) por motivo. */
+    public void recordGuardrailBlock(String stage, String code) {
+        registry.counter("llm.guardrail.blocked", Tags.of("stage", stage, "code", code)).increment();
+        log.info("guardrail_block stage={} code={}", stage, code);
+    }
+
+    /** Cache semântico: HIT (respondeu do cache, 0 token do modelo forte) ou MISS. */
+    public void recordCache(boolean hit) {
+        registry.counter("llm.cache", Tags.of("result", hit ? "hit" : "miss")).increment();
+        if (hit) {
+            log.info("semantic_cache result=hit (0 token do modelo forte)");
+        }
+    }
+
+    /** Roteamento: qual modelo foi escolhido para a tarefa. */
+    public void recordRoute(String model) {
+        registry.counter("llm.route", Tags.of("model", model)).increment();
+    }
+
     private double estimateCost(LlmResult r) {
         return r.promptTokens() / 1_000_000.0 * props.inputPricePerMillion()
                 + r.outputTokens() / 1_000_000.0 * props.outputPricePerMillion();

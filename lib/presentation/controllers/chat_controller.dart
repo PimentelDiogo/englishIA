@@ -29,6 +29,9 @@ class ChatController extends GetxController {
     final text = textController.text.trim();
     if (text.isEmpty) return;
 
+    // Snapshot da conversa ANTES da nova fala — vira o contexto (multi-turn).
+    final history = List<MessageEntity>.from(messages);
+
     // Add user message to UI
     messages.add(MessageEntity(text: text, isUser: true));
     textController.clear();
@@ -36,8 +39,8 @@ class ChatController extends GetxController {
     // Set loading state
     isLoading.value = true;
 
-    // Call UseCase
-    final response = await sendMessageUseCase(text);
+    // Call UseCase (com histórico para o tutor manter o contexto)
+    final response = await sendMessageUseCase(text, history: history);
 
     // Add AI response
     messages.add(response);

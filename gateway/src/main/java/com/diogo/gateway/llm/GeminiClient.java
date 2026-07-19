@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -28,24 +29,44 @@ public class GeminiClient {
     }
 
     /**
+     * Gera a resposta do tutor a partir da conversa completa (multi-turn).
+     *
      * @param systemInstruction persona do tutor (pode ser null)
-     * @param userText          mensagem do aluno
+     * @param turns             conversa em ordem; a ultima fala deve ser do aluno ("user")
      */
-    public LlmResult generate(String systemInstruction, String userText) {
-        var content = new GeminiDtos.Content(List.of(new GeminiDtos.Part(userText)));
+    public LlmResult generate(String systemInstruction, List<LlmTurn> turns) {
+        return generate(props.model(), systemInstruction, turns);
+    }
+
+    /**
+     * Variante com modelo explicito — usada por tarefas auxiliares baratas
+     * (ex.: classificador de guardrail), alinhado ao roteamento de custo do ADR-004.
+     */
+    public LlmResult generate(String model, String systemInstruction, List<LlmTurn> turns) {
+        var contents = new ArrayList<GeminiDtos.Content>();
+        boolean started = false;
+        for (LlmTurn t : turns) {
+            // Gemini exige que `contents` comece com role "user": descarta turns iniciais
+            // que sejam do modelo (ex.: mensagem de boas-vindas do tutor).
+            if (!started && !"user".equals(t.role())) {
+                continue;
+            }
+            started = true;
+            contents.add(new GeminiDtos.Content(t.role(), List.of(new GeminiDtos.Part(t.text()))));
+        }
         var system = systemInstruction == null ? null
-                : new GeminiDtos.Content(List.of(new GeminiDtos.Part(systemInstruction)));
-        var body = new GeminiDtos.Request(List.of(content), system);
+                : new GeminiDtos.Content(null, List.of(new GeminiDtos.Part(systemInstruction)));
+        var body = new GeminiDtos.Request(contents, system);
 
         try {
             GeminiDtos.Response resp = restClient.post()
-                    .uri("/v1beta/models/{model}:generateContent?key={key}", props.model(), props.apiKey())
+                    .uri("/v1beta/models/{model}:generateContent?key={key}", model, props.apiKey())
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(body)
                     .retrieve()
                     .body(GeminiDtos.Response.class);
 
-            return toResult(resp);
+            return toResult(model, resp);
         } catch (RestClientException e) {
             // Log tecnico completo fica no servidor; usuario recebe mensagem honesta e limpa.
             log.warn("Falha ao chamar o provedor Gemini: {}", e.getMessage());
@@ -54,7 +75,7 @@ public class GeminiClient {
         }
     }
 
-    private LlmResult toResult(GeminiDtos.Response resp) {
+    private LlmResult toResult(String model, GeminiDtos.Response resp) {
         String text = "";
         if (resp != null && resp.candidates() != null && !resp.candidates().isEmpty()) {
             var parts = resp.candidates().get(0).content().parts();
@@ -67,6 +88,6 @@ public class GeminiClient {
         int out = usage != null && usage.candidatesTokenCount() != null ? usage.candidatesTokenCount() : 0;
         int total = usage != null && usage.totalTokenCount() != null ? usage.totalTokenCount() : in + out;
 
-        return new LlmResult("gemini", props.model(), text, in, out, total);
+        return new LlmResult("gemini", model, text, in, out, total);
     }
 }

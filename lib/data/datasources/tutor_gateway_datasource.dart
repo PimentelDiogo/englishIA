@@ -3,22 +3,30 @@ import 'dart:convert';
 import 'package:get/get.dart' hide Response;
 import 'package:http/http.dart' as http;
 
+import '../../domain/entities/message_entity.dart';
 import '../../presentation/services/config_service.dart';
 
 /// Datasource do chat livre via AI Gateway (ADR-001), no lugar da chamada direta
 /// ao Gemini. A API key nao vive mais no cliente — quem fala com o LLM e o gateway.
 ///
-/// Observacao honesta: este endpoint e single-turn (sem historico). O contexto
-/// multi-turno da conversa e o proximo incremento no gateway (aceitar `history`).
+/// Multi-turn: o gateway e stateless, entao o cliente envia o [history] da conversa
+/// em cada request. Cada turn vira {role: "user"|"model", text}.
 class TutorGatewayDatasource {
   final http.Client _client;
 
   TutorGatewayDatasource({http.Client? client})
       : _client = client ?? http.Client();
 
-  Future<String> sendMessage(String message) async {
+  Future<String> sendMessage(
+    String message, {
+    List<MessageEntity> history = const [],
+  }) async {
     final baseUrl = Get.find<ConfigService>().gatewayUrl;
     final uri = Uri.parse('$baseUrl/tutor/chat');
+
+    final historyJson = history
+        .map((m) => {'role': m.isUser ? 'user' : 'model', 'text': m.text})
+        .toList();
 
     late final http.Response response;
     try {
@@ -26,7 +34,7 @@ class TutorGatewayDatasource {
           .post(
             uri,
             headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'message': message}),
+            body: jsonEncode({'message': message, 'history': historyJson}),
           )
           .timeout(const Duration(seconds: 30));
     } catch (_) {

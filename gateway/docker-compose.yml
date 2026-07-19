@@ -1,0 +1,23 @@
+# RAG (Fase 3 / ADR-003): Postgres com extensao pgvector.
+# Subir:  docker compose up -d
+# A app conecta em localhost:5432 (ver application.properties).
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: englishia-pgvector
+    environment:
+      POSTGRES_DB: englishia
+      POSTGRES_USER: englishia
+      POSTGRES_PASSWORD: englishia
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U englishia -d englishia"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:

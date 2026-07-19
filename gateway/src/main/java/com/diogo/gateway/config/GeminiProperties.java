@@ -10,6 +10,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record GeminiProperties(
         String apiKey,
         String model,
+        String classifierModel,
         String baseUrl,
         double inputPricePerMillion,
         double outputPricePerMillion

@@ -1,7 +1,8 @@
 ---
 tags: [adr, arquitetura, englishIA, rag, vector-db]
 criado: 2026-07-19
-status: proposto
+atualizado: 2026-07-19
+status: aceito (implementado na Fase 3)
 decisao: "pgvector (Postgres) como vector DB do RAG — em vez de Qdrant"
 relaciona: [ADR-001-ai-gateway, PRD-ai-tutor]
 ---
@@ -66,6 +67,16 @@ graph LR
 - Ingestão: chunking → embeddings baratos → índice.
 - Busca híbrida (dense + full-text) com top-k rígido; rerank só no top-k.
 - Medir com RAGAS (Context Relevance, Faithfulness, Answer Relevance) contra o eval dataset.
+
+## Implementação (Fase 3)
+- Infra: `gateway/docker-compose.yml` (`pgvector/pgvector:pg16`).
+- Acesso: **Spring JDBC** (`JdbcClient`) — embedding como literal `[...]` com `CAST(... AS vector)`,
+  busca dense por `<=>` (cosseno). Sem Hibernate (evita complexidade do tipo `vector`).
+- Embeddings: `text-embedding-004` (Gemini, 768 dims) — sem SaaS/conta nova.
+- Base semeada no boot (`KnowledgeSeeder`, idempotente): regras de gramática + phrasal verbs.
+- Grounding: contexto recuperado injetado no prompt + `GroundingChecker` (anti-alucinação).
+- **Fail-soft:** DB fora → RAG retorna vazio, tutor segue sem grounding (não derruba).
+- **Pendente:** busca híbrida (BM25) + rerank; RAGAS offline; histórico do aluno via MCP.
 
 ## Narrativa de entrevista
 "Escolhi pgvector em vez de Qdrant conscientemente: no meu estágio, uma infra só (Postgres

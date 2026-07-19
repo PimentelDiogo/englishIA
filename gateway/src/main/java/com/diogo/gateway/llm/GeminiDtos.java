@@ -18,7 +18,9 @@ final class GeminiDtos {
     record Request(List<Content> contents, Content systemInstruction) {
     }
 
-    record Content(List<Part> parts) {
+    // role: "user" | "model" nas turns da conversa; null (omitido) na systemInstruction.
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    record Content(String role, List<Part> parts) {
     }
 
     record Part(String text) {

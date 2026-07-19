@@ -8,9 +8,15 @@ class ChatRepositoryImpl implements ChatRepository {
   ChatRepositoryImpl({required this.remoteDataSource});
 
   @override
-  Future<MessageEntity> sendMessage(String message) async {
+  Future<MessageEntity> sendMessage(
+    String message, {
+    List<MessageEntity> history = const [],
+  }) async {
     try {
-      final responseText = await remoteDataSource.sendMessage(message);
+      final responseText = await remoteDataSource.sendMessage(
+        message,
+        history: history,
+      );
       return MessageEntity(text: responseText, isUser: false);
     } catch (e) {
       // Surface da mensagem honesta (sem prefixo tecnico "Error:"/"Exception:").

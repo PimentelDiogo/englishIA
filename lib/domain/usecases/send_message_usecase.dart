@@ -6,7 +6,10 @@ class SendMessageUseCase {
 
   SendMessageUseCase(this.repository);
 
-  Future<MessageEntity> call(String message) async {
-    return await repository.sendMessage(message);
+  Future<MessageEntity> call(
+    String message, {
+    List<MessageEntity> history = const [],
+  }) async {
+    return await repository.sendMessage(message, history: history);
   }
 }

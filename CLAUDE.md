@@ -43,23 +43,34 @@ Monólito, tudo em `lib/`:
 
 ## Chamadas de IA (onde estão)
 - `data/datasources/tutor_gateway_datasource.dart` — **chat livre via AI Gateway** (HTTP `POST
-  /tutor/chat`). Chave **não fica mais no cliente** nesse fluxo. ⚠️ Hoje é **single-turn** (sem
-  histórico) — multi-turno é o próximo incremento do gateway.
-- `data/datasources/gemini_datasource.dart` — implementação antiga do chat via SDK (mantida por
-  ora; **não é mais usada pelo Free Chat**, que migrou para o gateway).
+  /tutor/chat`). Chave **não fica mais no cliente** nesse fluxo. **Multi-turn:** o app envia o
+  `history` da conversa em cada request (gateway stateless). (O antigo `gemini_datasource.dart`,
+  chat via SDK, foi **removido** ao migrar para o gateway.)
 - `data/datasources/gemini_context_datasource.dart` — diálogos por tópico (**saída JSON
   estruturada** `{dialogueResponse, grammarFeedback}`), flashcards e phrasal verbs. **Ainda
   direto no Gemini.**
 
 ## AI Gateway (`gateway/`, Spring Boot 4 + Java 21)
 - Objetivo: tirar IA do cliente e habilitar guardrails/RAG/router/cache/fallback (ver ADRs).
-- Endpoint `POST /tutor/chat` → repassa ao Gemini server-side; retorna `reply` + `usage`
-  (tokens/custo/latência). Observabilidade via Actuator/Micrometer (`LlmMetrics`).
+- Endpoint `POST /tutor/chat` → aceita `{message, history[]}` (multi-turn, stateless), repassa ao
+  Gemini server-side; retorna `reply` + `usage` (tokens/custo/latência). Observabilidade via
+  Actuator/Micrometer (`LlmMetrics`).
 - Erros **honestos**: `GlobalExceptionHandler` → 502 `tutor_unavailable` (nunca stacktrace).
+- **Guardrails (ADR-005):** pipeline `GuardrailChain` no `TutorService` (in/out). Input: Length +
+  PromptInjection regex (Java, zero token) + `LlmInputGuardrail` (injection **e** off-scope numa
+  chamada `flash-lite`, fail-open). Output: `LlmModerationOutputGuardrail` (`flash-lite`). **Sem
+  SaaS** — reusa o Gemini (Lakera foi descartado por falta de conta). Resposta traz `blocked`/`reason`;
+  métrica `llm.guardrail.blocked`. Desligável via `GUARDRAIL_LLM_CHECKS=false`.
 - Chave via env: `GEMINI_API_KEY=... ./mvnw spring-boot:run`. Preços de token no
   `application.properties` são **estimativa** (confirmar na pricing do Google).
 - App aponta via `Constants.gatewayUrl` / `ConfigService.gatewayUrl` (`--dart-define=GATEWAY_URL`
   ou Settings). **Emulador Android:** usar `http://10.0.2.2:8080`.
+- **RAG (Fase 3 / ADR-003):** Postgres + pgvector (`docker-compose.yml`). Pacote `rag/`:
+  `GeminiEmbeddingClient` (text-embedding-004, 768d) · `KnowledgeRepository` (JdbcClient, busca
+  dense `<=>`) · `RagService` (retrieve + bloco de contexto) · `KnowledgeSeeder` (gramática +
+  phrasal, idempotente, boot). `TutorService` injeta o contexto no prompt e checa grounding
+  (`GroundingChecker`, anti-alucinação). **Fail-soft:** DB fora → tutor segue sem grounding.
+  Rodar: `docker compose up -d` + `GEMINI_API_KEY=...`.
 
 ## UI / Responsividade
 Flutter **Material 3**, tema dark (seed `#6C63FF`). Sem framework CSS (é Flutter nativo).
@@ -95,11 +106,13 @@ padronizar — o SKILL.md prevê mockar `VoiceServiceInterface`. Propor testes a
 - `ROADMAP.md` — features de usuário (planejamento real). `metrica.md` (no vault) — plano de
   maturidade de IA (gateway/guardrails/RAG/custo/fallback) usado como laboratório de entrevista.
 - `ADR/` — decisões: `ADR-001` gateway · `ADR-002` fallback · `ADR-003` pgvector · `ADR-004`
-  model router. `PRD/PRD-ai-tutor.md` — SLOs do tutor. (espelhados no vault `Projetos/englishIA/`).
+  model router · `ADR-005` guardrails. `PRD/PRD-ai-tutor.md` — SLOs do tutor. (espelhados no vault
+  `Projetos/englishIA/`).
 - `.agents/skills/design_system/SKILL.md` — padrão de design/responsividade (ler antes de UI).
 - `.agents/skills/sdd_voice_chat/SKILL.md` — design de voz, feedback gramatical via JSON,
   SRS/Isar/SM-2, guia p/ agentes. README não tem conteúdo real.
 
 ## Status do plano (metrica.md)
-✅ Fase 0 (PRD + 4 ADRs) · ✅ Fase 1 (gateway + observabilidade) · ⏳ Fase 2 (guardrails) ·
-⏳ Fase 3 (RAG) · ⏳ Fase 4 (router+cache) · ⏳ Fase 5 (fallback).
+✅ Fase 0 (PRD + 5 ADRs) · ✅ Fase 1 (gateway + multi-turn + erros honestos) ·
+✅ Fase 2 (guardrails in/out) · ✅ Fase 3 (RAG pgvector + grounding; falta híbrido/RAGAS/MCP) ·
+⏳ Fase 4 (router+cache) · ⏳ Fase 5 (fallback).
