@@ -1,7 +1,8 @@
 ---
 tags: [adr, arquitetura, englishIA, custo, model-router]
 criado: 2026-07-19
-status: proposto
+atualizado: 2026-07-19
+status: aceito (implementado na Fase 4)
 decisao: "Roteamento de modelo por complexidade da tarefa (rule-based) + cache semântico"
 relaciona: [ADR-001-ai-gateway, ADR-002-fallback-multiprovedor, PRD-ai-tutor]
 ---
@@ -72,6 +73,17 @@ do custo (do `metrica.md`).
 - Classificador rule-based por tipo de endpoint (chat vs grammar) + heurística simples.
 - Cache semântico com threshold conservador; medir **% de economia** (métrica do PRD).
 - Dashboard mínimo: custo por rota, taxa de cache hit.
+
+## Implementação (Fase 4)
+- **Router** (`ModelRouter`, rule-based, zero custo): reusa o sinal do RAG — se recuperou contexto
+  de gramática/vocabulário → **modelo forte** (`gemini.model`); diálogo casual → **barato**
+  (`router.cheap-model` = flash-lite). Métrica `llm.route{model}`.
+- **Cache semântico** (`SemanticCache`, pgvector): embedding da pergunta (calculado **1 vez**,
+  reusado no RAG), busca por `<=>` com distância tight (`cache.max-distance=0.15`). HIT → responde
+  do cache com **0 token do modelo forte** (`cached:true`, `usage.model:"none"`). Só cacheia
+  perguntas **sem histórico** (isoladas). Métrica `llm.cache{result}`.
+- Ambos liváveis via env (`ROUTER_ENABLED`, `CACHE_ENABLED`) e **fail-soft**.
+- **Pendente:** medir o % de economia real contra um baseline (o SLO de custo do PRD).
 
 ## Narrativa de entrevista
 "Parei de usar um modelo único pra tudo. Roteei por complexidade — tarefa auxiliar sempre no

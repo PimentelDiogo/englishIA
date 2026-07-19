@@ -71,6 +71,14 @@ Monólito, tudo em `lib/`:
   phrasal, idempotente, boot). `TutorService` injeta o contexto no prompt e checa grounding
   (`GroundingChecker`, anti-alucinação). **Fail-soft:** DB fora → tutor segue sem grounding.
   Rodar: `docker compose up -d` + `GEMINI_API_KEY=...`.
+- **Router + cache (Fase 4 / ADR-004):** `ModelRouter` (rule-based) roteia por complexidade —
+  tem contexto de gramática → modelo forte; casual → barato (`router.cheap-model`=flash-lite).
+  `SemanticCache` (pgvector) responde perguntas quase idênticas do cache (`cached:true`, 0 token do
+  forte), só sem histórico. Métricas `llm.route`/`llm.cache`. Liga/desliga via `ROUTER_ENABLED`/`CACHE_ENABLED`.
+- **Fallback (Fase 5 / ADR-002):** abstração `LlmProvider` (`GeminiClient` primário, `ClaudeClient`
+  fallback via Anthropic Messages API). `ResilientLlmService` = resilience4j (circuit breaker + retry)
+  no Gemini → cai pro Claude. **Sem SaaS** por padrão (`FALLBACK_ENABLED=false`; modelo `claude-opus-4-8`,
+  key via `ANTHROPIC_API_KEY`). Métrica `llm.fallback`. Se ambos falham → 502 honesto.
 
 ## UI / Responsividade
 Flutter **Material 3**, tema dark (seed `#6C63FF`). Sem framework CSS (é Flutter nativo).
@@ -115,4 +123,5 @@ padronizar — o SKILL.md prevê mockar `VoiceServiceInterface`. Propor testes a
 ## Status do plano (metrica.md)
 ✅ Fase 0 (PRD + 5 ADRs) · ✅ Fase 1 (gateway + multi-turn + erros honestos) ·
 ✅ Fase 2 (guardrails in/out) · ✅ Fase 3 (RAG pgvector + grounding; falta híbrido/RAGAS/MCP) ·
-⏳ Fase 4 (router+cache) · ⏳ Fase 5 (fallback).
+✅ Fase 4 (model router + cache semântico) · ✅ Fase 5 (fallback Gemini→Claude + circuit breaker).
+**🎉 Plano do `metrica.md` completo (Fases 0–5).** Pendências pontuais anotadas nos ADRs.

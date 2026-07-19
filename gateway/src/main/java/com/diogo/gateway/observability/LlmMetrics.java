@@ -75,6 +75,12 @@ public class LlmMetrics {
         registry.counter("llm.route", Tags.of("model", model)).increment();
     }
 
+    /** Fallback multi-provedor acionado (ex.: Gemini caiu → Claude). */
+    public void recordFallback(String provider) {
+        registry.counter("llm.fallback", Tags.of("provider", provider)).increment();
+        log.warn("llm_fallback provider={}", provider);
+    }
+
     private double estimateCost(LlmResult r) {
         return r.promptTokens() / 1_000_000.0 * props.inputPricePerMillion()
                 + r.outputTokens() / 1_000_000.0 * props.outputPricePerMillion();

@@ -1,7 +1,8 @@
 ---
 tags: [adr, arquitetura, englishIA, fallback, resiliencia]
 criado: 2026-07-19
-status: proposto
+atualizado: 2026-07-19
+status: aceito (implementado na Fase 5)
 decisao: "Gemini primário + fallback Claude com circuit breaker (resilience4j)"
 relaciona: [ADR-001-ai-gateway]
 ---
@@ -66,6 +67,18 @@ graph TD
 - Circuit breaker Gemini→Claude com `resilience4j`.
 - Teste que **derruba o Gemini** e prova que o tutor continua respondendo (métrica do PRD).
 - Log de qual provedor atendeu cada request.
+
+## Implementação (Fase 5)
+- Abstração `LlmProvider` (name + generate); `GeminiClient` (primário) e `ClaudeClient` (fallback) a implementam.
+- `ClaudeClient`: HTTP direto à **Anthropic Messages API** (`POST /v1/messages`, `x-api-key` +
+  `anthropic-version: 2023-06-01`), roles `model→assistant`, `system` top-level. Contrato conferido
+  na skill `claude-api`. Modelo padrão **`claude-opus-4-8`** (não rebaixar por custo — ajustável).
+- `ResilientLlmService`: **resilience4j** core (CircuitBreaker 50%/janela 10/20s + Retry 2x/300ms)
+  no primário; ao falhar/abrir circuito → Claude. Métrica `llm.fallback{provider}`.
+- **Opt-in + fail-honest:** `FALLBACK_ENABLED=false` por padrão; sem conta Anthropic roda só com Gemini;
+  se fallback também falhar → `LlmException` (502 honesto).
+- **Pendente:** fallback de retrieval (vector DB → BM25) e "resposta honesta sem base" — parciais via
+  RAG fail-soft (Fase 3); circuit breaker por-provedor no fallback.
 
 ## Narrativa de entrevista
 "Coloquei um circuit breaker com resilience4j: quando o provedor primário falha, o tutor cai

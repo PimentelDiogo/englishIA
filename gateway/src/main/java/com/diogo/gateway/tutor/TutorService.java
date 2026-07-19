@@ -1,22 +1,27 @@
 package com.diogo.gateway.tutor;
 
+import com.diogo.gateway.config.CacheProperties;
 import com.diogo.gateway.guardrail.GroundingChecker;
 import com.diogo.gateway.guardrail.GuardrailChain;
 import com.diogo.gateway.guardrail.GuardrailResult;
-import com.diogo.gateway.llm.GeminiClient;
 import com.diogo.gateway.llm.LlmResult;
 import com.diogo.gateway.llm.LlmTurn;
+import com.diogo.gateway.llm.ModelRouter;
+import com.diogo.gateway.llm.ResilientLlmService;
 import com.diogo.gateway.observability.LlmMetrics;
 import com.diogo.gateway.rag.KnowledgeChunk;
 import com.diogo.gateway.rag.RagService;
+import com.diogo.gateway.rag.SemanticCache;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
- * Orquestra o fluxo do tutor: guardrails de entrada → RAG (grounding) → LLM →
- * guardrails de saida → checagem de grounding (anti-alucinacao). ADR-001/004/005 + Fase 3.
+ * Orquestra o fluxo do tutor: input guardrails → cache semântico → RAG (grounding) →
+ * model router → LLM → output guardrails → grounding check.
+ * Cobre ADR-001/003/004/005 + Fases 1–4.
  */
 @Service
 public class TutorService {
@@ -27,18 +32,25 @@ public class TutorService {
             If the student makes a grammar mistake, gently point it out and show the correction.
             """;
 
-    private final GeminiClient gemini;
+    private final ResilientLlmService llm;
+    private final ModelRouter router;
     private final GuardrailChain guardrails;
     private final GroundingChecker grounding;
     private final RagService rag;
+    private final SemanticCache cache;
+    private final CacheProperties cacheProps;
     private final LlmMetrics metrics;
 
-    public TutorService(GeminiClient gemini, GuardrailChain guardrails, GroundingChecker grounding,
-                        RagService rag, LlmMetrics metrics) {
-        this.gemini = gemini;
+    public TutorService(ResilientLlmService llm, ModelRouter router, GuardrailChain guardrails,
+                        GroundingChecker grounding, RagService rag, SemanticCache cache,
+                        CacheProperties cacheProps, LlmMetrics metrics) {
+        this.llm = llm;
+        this.router = router;
         this.guardrails = guardrails;
         this.grounding = grounding;
         this.rag = rag;
+        this.cache = cache;
+        this.cacheProps = cacheProps;
         this.metrics = metrics;
     }
 
@@ -47,15 +59,33 @@ public class TutorService {
         GuardrailResult in = guardrails.checkInput(request.message());
         if (!in.allowed()) {
             metrics.recordGuardrailBlock("input", in.code());
-            return new ChatResponse(in.message(), true, in.code(), ChatResponse.Usage.none());
+            return new ChatResponse(in.message(), true, in.code(), false, ChatResponse.Usage.none());
         }
 
-        // 2) RAG — recupera conhecimento relevante e injeta no prompt (grounding).
-        List<KnowledgeChunk> chunks = rag.retrieve(request.message());
+        // Cacheável só sem histórico (pergunta isolada). Embedding calculado UMA vez (cache + RAG).
+        boolean cacheable = cacheProps.enabled()
+                && (request.history() == null || request.history().isEmpty());
+        float[] embedding = rag.embedQuery(request.message());
+
+        // 2) Cache semântico — perguntas quase idênticas respondem do cache (0 token do forte).
+        if (cacheable && embedding != null) {
+            Optional<String> hit = safeCacheLookup(embedding);
+            if (hit.isPresent()) {
+                metrics.recordCache(true);
+                return new ChatResponse(hit.get(), false, null, true, ChatResponse.Usage.none());
+            }
+            metrics.recordCache(false);
+        }
+
+        // 3) RAG — recupera conhecimento relevante e injeta no prompt (grounding).
+        List<KnowledgeChunk> chunks = rag.retrieve(embedding);
         String context = rag.toContextBlock(chunks);
         String system = context == null ? SYSTEM_TUTOR : SYSTEM_TUTOR + "\n\n" + context;
 
-        // 3) Monta a conversa (multi-turn) e chama o LLM forte.
+        // 4) Model router — pergunta nuançada (tem contexto) → forte; casual → barato (ADR-004).
+        String model = router.pickModel(!chunks.isEmpty());
+        metrics.recordRoute(model);
+
         var turns = new ArrayList<LlmTurn>();
         if (request.history() != null) {
             for (ChatRequest.Turn t : request.history()) {
@@ -65,27 +95,47 @@ public class TutorService {
         turns.add(new LlmTurn("user", request.message()));
 
         long start = System.nanoTime();
-        LlmResult result = gemini.generate(system, List.copyOf(turns));
+        LlmResult result = llm.generate(model, system, List.copyOf(turns));
         long latencyMs = (System.nanoTime() - start) / 1_000_000;
         double cost = metrics.record("chat", result, latencyMs);
 
         var usage = new ChatResponse.Usage(result.model(), result.promptTokens(),
                 result.outputTokens(), result.totalTokens(), cost, latencyMs);
 
-        // 4) Output guardrails — moderacao.
+        // 5) Output guardrails — moderação.
         GuardrailResult out = guardrails.checkOutput(request.message(), result.text());
         if (!out.allowed()) {
             metrics.recordGuardrailBlock("output", out.code());
-            return new ChatResponse(out.message(), true, out.code(), usage);
+            return new ChatResponse(out.message(), true, out.code(), false, usage);
         }
 
-        // 5) Grounding (anti-alucinacao) — so quando houve contexto do RAG.
+        // 6) Grounding (anti-alucinação) — só quando houve contexto do RAG.
         GuardrailResult grounded = grounding.check(result.text(), context);
         if (!grounded.allowed()) {
             metrics.recordGuardrailBlock("output", grounded.code());
-            return new ChatResponse(grounded.message(), true, grounded.code(), usage);
+            return new ChatResponse(grounded.message(), true, grounded.code(), false, usage);
         }
 
-        return new ChatResponse(result.text(), false, null, usage);
+        // 7) Popula o cache para próximas perguntas iguais.
+        if (cacheable && embedding != null) {
+            safeCacheStore(embedding, request.message(), result.text());
+        }
+        return new ChatResponse(result.text(), false, null, false, usage);
+    }
+
+    private Optional<String> safeCacheLookup(float[] embedding) {
+        try {
+            return cache.lookup(embedding);
+        } catch (Exception e) {
+            return Optional.empty(); // cache fora não pode quebrar a request
+        }
+    }
+
+    private void safeCacheStore(float[] embedding, String question, String reply) {
+        try {
+            cache.store(embedding, question, reply);
+        } catch (Exception ignored) {
+            // best-effort
+        }
     }
 }

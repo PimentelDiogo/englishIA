@@ -16,7 +16,7 @@ import java.util.List;
  * Isola o formato do Gemini: o resto do gateway so ve {@link LlmResult}.
  */
 @Component
-public class GeminiClient {
+public class GeminiClient implements LlmProvider {
 
     private static final Logger log = LoggerFactory.getLogger(GeminiClient.class);
 
@@ -26,6 +26,11 @@ public class GeminiClient {
     public GeminiClient(GeminiProperties props) {
         this.props = props;
         this.restClient = RestClient.builder().baseUrl(props.baseUrl()).build();
+    }
+
+    @Override
+    public String name() {
+        return "gemini";
     }
 
     /**
