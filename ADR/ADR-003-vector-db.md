@@ -83,8 +83,10 @@ graph LR
   faithfulness/answer-relevancy/context-precision/recall. Usa o endpoint `POST /tutor/retrieve`
   (expõe os chunks do híbrido) + Gemini como juiz.
 - **Fail-soft:** DB fora → RAG retorna vazio, tutor segue sem grounding (não derruba).
-- **Pendente:** histórico do aluno via **MCP** (personalização); confirmar o contrato da API de
-  embeddings (`embedContent`) contra a API viva; opcional: true BM25 (ParadeDB) + cross-encoder rerank.
+- **Embeddings (confirmado ao vivo):** `gemini-embedding-001` (`text-embedding-004` descontinuado),
+  com `outputDimensionality=768`. Validado end-to-end: seed → retrieve híbrido → chat grounded.
+- **Pendente:** histórico do aluno via **MCP** (parcial — ver [[ADR-006-mcp-student-history]]);
+  opcional: true BM25 (ParadeDB) + cross-encoder rerank.
 
 ## Narrativa de entrevista
 "Escolhi pgvector em vez de Qdrant conscientemente: no meu estágio, uma infra só (Postgres

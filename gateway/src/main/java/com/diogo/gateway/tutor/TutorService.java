@@ -8,10 +8,12 @@ import com.diogo.gateway.llm.LlmResult;
 import com.diogo.gateway.llm.LlmTurn;
 import com.diogo.gateway.llm.ModelRouter;
 import com.diogo.gateway.llm.ResilientLlmService;
+import com.diogo.gateway.config.PersonalizationProperties;
 import com.diogo.gateway.observability.LlmMetrics;
 import com.diogo.gateway.rag.KnowledgeChunk;
 import com.diogo.gateway.rag.RagService;
 import com.diogo.gateway.rag.SemanticCache;
+import com.diogo.gateway.student.StudentHistoryService;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -39,11 +41,14 @@ public class TutorService {
     private final RagService rag;
     private final SemanticCache cache;
     private final CacheProperties cacheProps;
+    private final StudentHistoryService students;
+    private final PersonalizationProperties personalizationProps;
     private final LlmMetrics metrics;
 
     public TutorService(ResilientLlmService llm, ModelRouter router, GuardrailChain guardrails,
                         GroundingChecker grounding, RagService rag, SemanticCache cache,
-                        CacheProperties cacheProps, LlmMetrics metrics) {
+                        CacheProperties cacheProps, StudentHistoryService students,
+                        PersonalizationProperties personalizationProps, LlmMetrics metrics) {
         this.llm = llm;
         this.router = router;
         this.guardrails = guardrails;
@@ -51,6 +56,8 @@ public class TutorService {
         this.rag = rag;
         this.cache = cache;
         this.cacheProps = cacheProps;
+        this.students = students;
+        this.personalizationProps = personalizationProps;
         this.metrics = metrics;
     }
 
@@ -88,7 +95,21 @@ public class TutorService {
         // 3) RAG — busca híbrida (dense + lexical) e injeta no prompt (grounding).
         List<KnowledgeChunk> chunks = rag.retrieve(embedding, request.message());
         String context = rag.toContextBlock(chunks);
-        String system = context == null ? SYSTEM_TUTOR : SYSTEM_TUTOR + "\n\n" + context;
+
+        // 3b) Personalização (ADR-006) — histórico do aluno via fronteira governada.
+        String personalization = null;
+        if (personalizationProps.enabled() && request.userId() != null && !request.userId().isBlank()) {
+            personalization = students.personalizationBlock(request.userId(), personalizationProps.weakLimit());
+        }
+
+        StringBuilder sys = new StringBuilder(SYSTEM_TUTOR);
+        if (context != null) {
+            sys.append("\n\n").append(context);
+        }
+        if (personalization != null) {
+            sys.append("\n\n").append(personalization);
+        }
+        String system = sys.toString();
 
         // 4) Model router — pergunta nuançada (tem contexto) → forte; casual → barato (ADR-004).
         String model = router.pickModel(!chunks.isEmpty());

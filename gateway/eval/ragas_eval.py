@@ -57,8 +57,9 @@ def main():
     from ragas.metrics import faithfulness, answer_relevancy, context_precision, context_recall
     from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 
-    judge = ChatGoogleGenerativeAI(model="gemini-2.5-flash")
-    embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
+    key = os.environ["GEMINI_API_KEY"]
+    judge = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=key)
+    embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001", google_api_key=key)
 
     ds = Dataset.from_list(samples)
     result = evaluate(

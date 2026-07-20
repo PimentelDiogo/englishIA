@@ -38,13 +38,16 @@ public class KnowledgeSeeder implements ApplicationRunner {
 
     private final KnowledgeRepository repo;
     private final SemanticCache cache;
+    private final com.diogo.gateway.student.StudentRepository students;
     private final GeminiEmbeddingClient embeddings;
     private final RagProperties props;
 
     public KnowledgeSeeder(KnowledgeRepository repo, SemanticCache cache,
+                           com.diogo.gateway.student.StudentRepository students,
                            GeminiEmbeddingClient embeddings, RagProperties props) {
         this.repo = repo;
         this.cache = cache;
+        this.students = students;
         this.embeddings = embeddings;
         this.props = props;
     }
@@ -57,6 +60,7 @@ public class KnowledgeSeeder implements ApplicationRunner {
         try {
             repo.ensureSchema(props.embeddingDimensions());
             cache.ensureSchema(props.embeddingDimensions()); // schema do cache semântico (ADR-004)
+            students.ensureSchema(); // schema do histórico do aluno (ADR-006)
             if (repo.count() > 0) {
                 log.info("Base de conhecimento ja populada — seed ignorado.");
                 return;

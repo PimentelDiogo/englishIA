@@ -66,7 +66,8 @@ Monólito, tudo em `lib/`:
 - App aponta via `Constants.gatewayUrl` / `ConfigService.gatewayUrl` (`--dart-define=GATEWAY_URL`
   ou Settings). **Emulador Android:** usar `http://10.0.2.2:8080`.
 - **RAG (Fase 3 / ADR-003):** Postgres + pgvector (`docker-compose.yml`). Pacote `rag/`:
-  `GeminiEmbeddingClient` (text-embedding-004, 768d) · `KnowledgeRepository` (JdbcClient, busca
+  `GeminiEmbeddingClient` (**gemini-embedding-001**, `outputDimensionality=768`; validado ao vivo) ·
+  `KnowledgeRepository` (JdbcClient, busca
   dense `<=>`) · `RagService` (retrieve + bloco de contexto) · `KnowledgeSeeder` (gramática +
   phrasal, idempotente, boot). `TutorService` injeta o contexto no prompt e checa grounding
   (`GroundingChecker`, anti-alucinação). **Fail-soft:** DB fora → tutor segue sem grounding.
@@ -75,8 +76,14 @@ Monólito, tudo em `lib/`:
   **Eval RAGAS** offline em `gateway/eval/` (dataset + `ragas_eval.py`). Rodar: `docker compose up -d`
   + `GEMINI_API_KEY=...`. **Stack Docker completo:** db (pgvector) + gateway + Prometheus + Grafana
   (`docker compose up -d --build`; Grafana :3000 dashboard "englishIA — LLM" p/ auditoria de token).
+- **Personalização (ADR-006, parcial):** `student/` — `StudentRepository` (Postgres `student_vocabulary`),
+  `StudentHistoryService` (fronteira governada read-only = "tools" MCP), `StudentController`
+  (`POST /student/{id}/vocabulary` sync + `GET .../weak|due`). `TutorService` injeta bloco de
+  personalização no prompt (gated por `PERSONALIZATION_ENABLED` + `ChatRequest.userId`).
+  **Pendente:** transporte MCP real (swap do repo por MCP client) + sync no app Flutter.
 - **Router + cache (Fase 4 / ADR-004):** `ModelRouter` (rule-based) roteia por complexidade —
-  tem contexto de gramática → modelo forte; casual → barato (`router.cheap-model`=flash-lite).
+  tem contexto de gramática → modelo forte; casual → barato (`router.cheap-model`=`gemini-flash-lite-latest`,
+  confirmado live; o `gemini-2.5-flash-lite` fixo é bloqueado p/ chaves novas).
   `SemanticCache` (pgvector) responde perguntas quase idênticas do cache (`cached:true`, 0 token do
   forte), só sem histórico. Métricas `llm.route`/`llm.cache`. Liga/desliga via `ROUTER_ENABLED`/`CACHE_ENABLED`.
 - **Fallback (Fase 5 / ADR-002):** abstração `LlmProvider` (`GeminiClient` primário, `ClaudeClient`
@@ -118,8 +125,8 @@ padronizar — o SKILL.md prevê mockar `VoiceServiceInterface`. Propor testes a
 - `ROADMAP.md` — features de usuário (planejamento real). `metrica.md` (no vault) — plano de
   maturidade de IA (gateway/guardrails/RAG/custo/fallback) usado como laboratório de entrevista.
 - `ADR/` — decisões: `ADR-001` gateway · `ADR-002` fallback · `ADR-003` pgvector · `ADR-004`
-  model router · `ADR-005` guardrails. `PRD/PRD-ai-tutor.md` — SLOs do tutor. (espelhados no vault
-  `Projetos/englishIA/`).
+  model router · `ADR-005` guardrails · `ADR-006` MCP histórico do aluno (proposto). `PRD/PRD-ai-tutor.md`
+  — SLOs do tutor. (espelhados no vault `Projetos/englishIA/`).
 - `.agents/skills/design_system/SKILL.md` — padrão de design/responsividade (ler antes de UI).
 - `.agents/skills/sdd_voice_chat/SKILL.md` — design de voz, feedback gramatical via JSON,
   SRS/Isar/SM-2, guia p/ agentes. README não tem conteúdo real.

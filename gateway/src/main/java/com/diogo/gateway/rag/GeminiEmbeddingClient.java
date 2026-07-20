@@ -13,7 +13,9 @@ import java.util.Map;
  * Gera embeddings via Gemini (mesmo provedor/chave do tutor — sem SaaS novo).
  * Endpoint: POST /v1beta/models/{model}:embedContent
  *
- * <p>⚠️ Formato do request/response a confirmar contra a API viva (como o preco-mock).
+ * <p>Confirmado contra a API viva: modelo `gemini-embedding-001` (o `text-embedding-004` foi
+ * descontinuado). Ele sai em 3072 dims por padrão → pedimos `outputDimensionality` = 768 para
+ * bater com a coluna `vector(768)`.
  */
 @Component
 public class GeminiEmbeddingClient {
@@ -33,7 +35,9 @@ public class GeminiEmbeddingClient {
         EmbedResponse resp = client.post()
                 .uri("/v1beta/models/{model}:embedContent?key={key}", rag.embeddingModel(), gemini.apiKey())
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(Map.of("content", Map.of("parts", List.of(Map.of("text", text)))))
+                .body(Map.of(
+                        "content", Map.of("parts", List.of(Map.of("text", text))),
+                        "outputDimensionality", rag.embeddingDimensions()))
                 .retrieve()
                 .body(EmbedResponse.class);
 
